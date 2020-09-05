@@ -1,0 +1,124 @@
+---
+title: "Course Project 1"
+author: "CAMILA"
+date: "03/09/2020"
+output: html_document
+---
+
+
+# Loading and preprocessing the data  
+`knitr::opts_chunk$set(echo = TRUE, tidy = TRUE, message = FALSE, fig.align = "center")`
+
+```{r}
+library(knitr)
+
+library(plyr)
+
+library(dplyr)
+
+library(lattice)
+
+library(ggplot2)
+```
+
+```{r}
+setwd("C:/Users/camil/OneDrive/Documentos/1. DOUTORADO/8. CURSOS LIVRES/COURSERA/EM ANDAMENTO/1. R/R_DATA SCIENCE/5. REPRODUCIBLE RESEARCH/SEMANA 2/Introduction to Course Project 1/dados")
+dir()
+
+activity_data <- read.csv2("activity.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
+
+str(activity_data)
+
+summary(activity_data)
+
+head(activity_data)
+
+tail(activity_data)
+
+activity_pattern <- subset(activity_data, !is.na(activity_data$steps))
+
+activity_pattern$date <- as.Date(activity_pattern$date, format = "%Y-%m-%d")
+
+```
+
+# What is mean total number of steps taken per day?
+
+```{r}
+total_steps <- ddply(activity_pattern, .(date), summarize, steps = sum(steps))
+
+histogram(~steps, data = total_steps, pch = 19, main = "Histogram of Total Number of Steps Taken Each Day", 
+          xlab = "Total Number of Steps", ylab = "Frequency", col = "steelblue")
+
+mean_steps <- mean(total_steps$steps)
+
+mean_steps
+
+median_steps <- median(total_steps$steps)
+
+median_steps
+```
+
+# What is the average daily activity pattern?
+
+```{r}
+interval_steps <- ddply(activity_pattern, .(interval), summarize, steps = mean(steps))
+
+ggplot(interval_steps, aes(x = interval, y = steps)) + geom_line(size = 0.8, 
+                                                                 color = "steelblue") + labs(title = "Average Number of Steps Taken During 5 Minute Interval", 
+                                                                                             x = "Interval (in Minutes)", y = "Average Number of Steps Taken") + theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+interval_steps[which.max(interval_steps$steps), ]
+
+sum(is.na(activity_data$steps))
+
+sum(is.na(interval_steps$steps))
+
+colnames(interval_steps) <- c("interval", "mean_steps")
+
+activity_impute <- merge(activity_data, interval_steps, by = "interval")
+
+activity_impute$steps[is.na(activity_impute$steps)] <- activity_impute$mean_steps[is.na(activity_impute$steps)]
+
+sum(is.na(activity_impute$steps))
+
+activity_impute$date <- as.Date(activity_impute$date, format = "%Y-%m-%d")
+
+impute_steps <- ddply(activity_impute, .(date), summarize, steps = sum(steps))
+
+histogram(~steps, data = impute_steps, pch = 19, main = "Histogram of Total Number of Steps Taken Each Day", 
+          xlab = "Total Number of Steps", ylab = "Frequency", col = "steel blue")
+
+
+impute_mean_steps <- mean(impute_steps$steps)
+
+impute_mean_steps
+
+
+impute_median_steps <- median(impute_steps$steps)
+
+impute_median_steps
+
+```
+
+# Are there differences in activity patterns between weekdays and weekends?
+
+```{r}
+activity_impute$day_of_week <- weekdays(activity_impute$date)
+summary(activity_impute$day_of_week)
+
+activity_impute$weekend <- as.factor(activity_impute$day_of_week == "sábado" | 
+                                       activity_impute$day_of_week == "domingo")
+
+levels(activity_impute$weekend) <- c("Weekday", "Weekend")
+```
+
+
+```{r} 
+week_steps <- ddply(activity_impute, .(interval, weekend), summarize, steps = mean(steps))
+
+ggplot(week_steps, aes(x = interval, y = steps, color = weekend)) + geom_line(size = 0.8) + 
+  facet_grid(weekend ~ .) + labs(title = "Average Number of Steps Taken During Weekday and Weekend", 
+                                 x = "Interval (in Minutes)", y = "Average Number of Steps Taken") + theme_bw() + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
